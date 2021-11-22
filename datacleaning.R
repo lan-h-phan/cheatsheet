@@ -72,6 +72,25 @@ grep(pattern = "treatmentstatus", x = names(dat)) # The grep() function searches
 # treatment status variable is the 798th variable in the data
 # set.
 
+# The argument value = TRUE will cause grep() to print the value 
+# of the pattern match found instead of its position.
+grep(pattern = "know_std_prev", x = names(dat), value = FALSE)
+grep(pattern = "know_std_prev", x = names(dat), value = TRUE)
+
+# This returns any patterns that *contain* the string "know_std_prev", 
+# but we only want those that match the string *exactly*. One solution
+# is to use regular expressions (https://rstudio.com/wp-content/uploads/2016/09/RegExCheatsheet.pdf)
+# to specify that the pattern should begin and end at the first and
+# last characteres in our string. ^ specifies the start of a string and
+# $ specifies the end. The strings we want, however, begin with r1_, r2_, 
+# or r3_. Here, we can use the period to denote "any character".
+grep(pattern = "^r._know_std_prev$", x = names(dat), value = TRUE)
+
+# Ok, now that we know we have the three variables we need, let's get
+# their positions.
+grep(pattern = "^r._know_std_prev$", x = names(dat), value = FALSE)
+
+
 ### Changing Type ###
 
 table(dat2$Sex)
