@@ -1,0 +1,327 @@
+#######
+# 1. Import
+#######
+# The paper and data are available here:
+# https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0214252
+
+# Import the data. This can be done via the "Files" tab
+# in your plotting window pane in RStudio. Or, it can be
+# one manually as follows, though, on your machine you 
+# would need to enter the correct file path.
+dat <- read.csv(file = paste0("~/Desktop/Academics/2021 Fall/Linear Models and Experimental Designs /Lab/00_smokingRCT.csv"))
+names(dat)
+
+#######
+# 2. Clean
+#######
+# Variables to focus on:
+# -Treatment group (Condition)
+# -Age (Age)
+# -Sex (Sex)
+# -Baseline smoking (cigarettes_day_baseline)
+# -Number of years smoker (Number_years_smoking)
+# -Depression at baseline (bdi_baseline)
+# -Depression at the end of trial (bdi_EOT)
+# -Smoking at end of trial (Cigarettes_day_EOT)
+# -Working status
+# -Education level
+# -Marital status
+
+# NEW VARIABLES FOR TWO-WAY ANOVA
+# -Working status (Working_status)
+# -Education (Education)
+# -Marital Status (Marital_status)
+
+# Let's create a new data set that only has the variables 
+# we are interested in working with
+dat2 <- subset(x = dat, 
+               select = c("Condition", "Age", "Sex", 
+                          "cigarettes_day_baseline",
+                          "Number_years_smoking", "bdi_baseline", 
+                          "bdi_EOT", "Cigarettes_day_EOT",
+                          "Working_status", "Education",
+                          "Marital_status"))
+head(dat2)
+# Rename some of the variables to have shorter names
+names(dat2)
+names(dat2)[4] <- "cig_base"
+names(dat2)[5] <- "yrs_smoke"
+names(dat2)[6] <- "bdi_base"
+names(dat2)[8] <- "cig_EOT"
+names(dat2)
+head(dat2)
+
+# Check structure of data to see class of variables
+str(dat2)
+
+# Examine the new baseline covariates we just brought in.
+table(dat2$Working_status)
+table(dat2$Education)
+table(dat2$Marital_status)
+
+# Consult the SPSS (available at PLOSONE link above) file for
+# category labels. Find the following:
+# For the working status variable, 
+#  1 = working; 2 = unemployed; 3 = sick leave; 4 = retirement; 5 = other
+# Let's create an indicator 0/1 variable where 1 is working and 0 is 
+# anything else.
+dat2$working <- ifelse(dat2$Working_status == 1, 1, 0)
+
+# For the education variable, 
+#  1 = < HS diploma; 2 = HS or GED; 3 = College/technical; 4 = no education
+# Let's create a 0/1 indicator where 1 = college and 0 otherwise.
+dat2$college <- ifelse(dat2$Education == 3, 1, 0)
+
+# For the marital status variable,
+#  1 = single; 2 = married or live with partner; 3 = divorced/separated/widowed
+# Let's create a 0/1 indicator where 1 = married and 0 = otherwise
+dat2$married <- ifelse(dat2$Marital_status == 2, 1, 0)
+
+str(dat2)
+
+# Create factor versions of categorical variables
+table(dat2$Condition)
+dat2$ConditionF <- factor(dat2$Condition, 
+                          levels = c(1,2,3),
+                          labels = c("SCBSCT", "SCBSCT-BA", "WL"))
+table(dat2$ConditionF)
+dat2$ConditionF <- relevel(dat2$ConditionF, ref = "WL")
+table(dat2$ConditionF) # Now WL is first (reference)
+
+table(dat2$Sex)
+dat2$SexF <- factor(dat2$Sex,
+                    levels = c(1,2),
+                    labels = c("Male", "Female"))
+table(dat2$SexF)
+
+table(dat2$working)
+dat2$workingF <- factor(dat2$working,
+                    levels = c(0,1),
+                    labels = c("not working", "working"))
+table(dat2$workingF)
+
+table(dat2$college)
+dat2$collegeF <- factor(dat2$college,
+                        levels = c(0,1),
+                        labels = c("no college", "college"))
+table(dat2$collegeF) 
+
+table(dat2$married)
+dat2$marriedF <- factor(dat2$married,
+                        levels = c(0,1),
+                        labels = c("not married", "married"))
+table(dat2$marriedF)
+table(dat2$marriedF, dat2$ConditionF)
+
+# Examine the first 6 rows after cleaning
+head(dat2)
+# Examine rows for WL condition
+dat2[which(dat2$ConditionF == "WL"),]
+
+#######
+# 3. Two-Way Analysis with marital status
+#######
+# In two separate analyses we will explore two research questions
+# with the Beck Depression Inventory outcome.
+# 1. Is there any evidence of a differential effect of treatment 
+#    on BDI at EOT based on being married?
+# 2. Is there any evidence that the treatment is differentially 
+#    effective on BDI at EOT based on working status?
+
+# For the first question (1), we will run the two-way between-
+# subjects ANOVA, regressing bdi_EOT on the interaction between
+# treamtent condition (ConditionF) and the married indicator 
+# (marriedF).
+
+# Begin by testing assumptions for the two-way between-subjects
+# ANOVA, which are identical to the one-way between-subjects 
+# ANOVA. Here, we have two factors, condition and married. They
+# each have 3 and 2 levels, respectively, so the design has a 
+# total of 3*2 = 6 groups. 
+
+
+# CONSTANT VARIANCE ASSUMPTION
+# The assumption of constant residual 
+# variance implies that the variance of the outcome variable will
+# be identical in each group.
+
+# 1. Begin with boxplots.
+par(mar = c(11, 4, 4, 2) + .1)
+boxplot(bdi_EOT ~ ConditionF:collegeF, data = dat2, las = 2, 
+        xlab = "", main = "Boxplots of BDI at EOT by Group",
+        ylab = "BDI Score")
+# 2. Next, calculate sample variances and rule of thumb ratio.
+by(data = dat2$bdi_EOT, 
+   INDICES = list(dat2$ConditionF, dat2$collegeF),
+   FUN = var, na.rm = TRUE)
+#    Need group sample sizes for this as well.
+table(dat2$collegeF, dat2$ConditionF)
+# Largest to smallest ratio:
+(67/20)*(157.74/29.34) # 18.01 is large # exceeds 4
+# 3. Run a statistical test of the null hypothesis of equal 
+#    group variances (e.g., Levene's test).
+library(car)
+leveneTest(bdi_EOT ~ ConditionF*collegeF, data = dat2) #Levene's not significant 
+# Assumption for Homogeineity of Variance is not violated
+
+# The WL control group sample sizes are about half as large
+# as the other groups, and the variances associated with the 
+# WL control groups are larger. This is an "inverse pairing" 
+# (i.e., groups with smaller sample sizes have larger variances), 
+# which can lead to over-confidence in results. That is, p-values
+# will tend to be smaller (i.e., more significant) than they 
+# would have been had the assumption been satisfied. Although we
+# will carry on here to demonstrate the use and application of two-
+# way between-subjects ANOVA, we should be careful to not interpret
+# the resultant p-values at face value.
+
+###
+# NORMALITY ASSUMPTION
+###
+# To check the assumption that the residuals are normally distributed,
+# we will examine the QQplot after fitting the full regression model.
+# Set deviation coding as default.
+options(contrasts = c("contr.sum", "contr.poly"))
+lm1 <- lm(bdi_EOT ~ ConditionF + collegeF + ConditionF:collegeF, data = dat2)
+#lm1 <- lm(bdi_EOT ~ ConditionF*marriedF, data = dat2)
+summary(lm1)
+
+library(car) 
+qqPlot(lm1)
+
+# There are some severe departures from normality at the tails and
+# in the center. The assumption appears untenable here. Let's examine
+# histograms of the outcome by group.
+par(mfrow = c(2,3)) # Multiple plots per window
+with(data = dat2,
+     expr = hist(bdi_EOT[which(ConditionF == "SCBSCT" & collegeF == "college")],
+                 breaks = seq(0, 65, 5), main = "SCBSCT:college", xlab = "BDI"))
+with(data = dat2,
+     expr = hist(bdi_EOT[which(ConditionF == "SCBSCT-BA" & collegeF == "college")],
+                 breaks = seq(0, 65, 5), main = "SCBSCT-BA:college", xlab = "BDI"))
+with(data = dat2,
+     expr = hist(bdi_EOT[which(ConditionF == "WL" & collegeF == "college")],
+                 breaks = seq(0, 65, 5), main = "WL:college", xlab = "BDI"))
+with(data = dat2,
+     expr = hist(bdi_EOT[which(ConditionF == "SCBSCT" & collegeF == "no college")],
+                 breaks = seq(0, 65, 5), main = "SCBSCT:no", xlab = "BDI"))
+with(data = dat2,
+     expr = hist(bdi_EOT[which(ConditionF == "SCBSCT-BA" & collegeF == "no college")],
+                 breaks = seq(0, 65, 5), main = "SCBSCT-BA:no", xlab = "BDI"))
+with(data = dat2,
+     expr = hist(bdi_EOT[which(ConditionF == "WL" & collegeF == "no college")],
+                 breaks = seq(0, 65, 5), main = "WL:no", xlab = "BDI"))
+par(mfrow = c(1,1)) # Back to one plot per window
+
+# Data are skewed to the right. One possibility for addressing data that
+# are right-skewed is to take the log (base e). One issue is that log(0)
+# is undefined. So, if there are any 0 values, they must be dealt with 
+# before taking the log.
+range(dat2$bdi_EOT, na.rm = TRUE) # There are zero values.
+
+# One approach is to add a constant value to all data (such as 1/2).
+dat2$bdi_EOT_trans <- log(dat2$bdi_EOT + .5)
+
+# Let's examine histograms of the transformed variable.
+par(mfrow = c(2,3)) # Multiple plots per window
+with(data = dat2,
+     expr = hist(bdi_EOT_trans[which(ConditionF == "SCBSCT" & collegeF == "college")],
+                 breaks = seq(-1, 5, .25), main = "SCBSCT:college", xlab = "BDI"))
+with(data = dat2,
+     expr = hist(bdi_EOT_trans[which(ConditionF == "SCBSCT-BA" & collegeF == "college")],
+                 breaks = seq(-1, 5, .25), main = "SCBSCT-BA:college", xlab = "BDI"))
+with(data = dat2,
+     expr = hist(bdi_EOT_trans[which(ConditionF == "WL" & collegeF == "college")],
+                 breaks = seq(-1, 5, .25), main = "WL:college", xlab = "BDI"))
+with(data = dat2,
+     expr = hist(bdi_EOT_trans[which(ConditionF == "SCBSCT" & collegeF == "no college")],
+                 breaks = seq(-1, 5, .25), main = "SCBSCT:no", xlab = "BDI"))
+with(data = dat2,
+     expr = hist(bdi_EOT_trans[which(ConditionF == "SCBSCT-BA" & collegeF == "no college")],
+                 breaks = seq(-1, 5, .25), main = "SCBSCT-BA:no", xlab = "BDI"))
+with(data = dat2,
+     expr = hist(bdi_EOT_trans[which(ConditionF == "WL" & collegeF == "no college")],
+                 breaks = seq(-1, 5, .25), main = "WL:no", xlab = "BDI"))
+par(mfrow = c(1,1)) # Back to one plot per window
+
+# Looks much better; let's try again using the transformed variable.
+lm2 <- lm(bdi_EOT_trans ~ ConditionF * collegeF, data = dat2)
+qqPlot(lm2) # The assumption now looks tenable.
+
+# It sometimes happens that resolving one assumption via transformation can'
+# help with another assumption. Let's re-check the constant variance 
+# assumption with the transformed outcome.
+boxplot(bdi_EOT_trans ~ ConditionF:collegeF, data = dat2)
+by(data = dat2$bdi_EOT_trans, 
+   INDICES = list(dat2$ConditionF, dat2$collegeF),
+   FUN = var, na.rm = TRUE)
+(67/20)*(1.22/.66) # 6.19 much better than 18.01
+leveneTest(bdi_EOT_trans ~ ConditionF:collegeF, data = dat2)
+
+# Constant variance assumption is now tenable as well.
+# Let's examine the interaction plot. We can do this 
+# in package emmeans after creating an emmeans object.
+library(emmeans)
+emm1 <- emmeans(object = lm2, 
+                specs = ~ ConditionF:collegeF)
+emmip(object = emm1, # emmip stands for EMMeans Interaction Plot
+      formula = collegeF ~ ConditionF, # the formula is trace factor ~ x factor 
+      CIs = FALSE) # add 95% CIs to the means if code TRUE
+
+# It looks like there is  evidence of a signifcant interaction 
+# and main effect but let's test.
+Anova(lm2, type = 3)
+
+# And the analysis confirms that none are significant. Thus,
+# we find no evidence that the treatment condition interacted 
+# with marital status in affecting log(BDI) at EOT (F = .21; p = .81). 
+# Furthermore, there was no evidence of main effects for either 
+# marital status (F = .12; p = .73) or treatment condition (F = .59; 
+# p = .56) on log(BDI) at EOT. Note, the outcome was log-transformed for
+# these analyses to handle violations to homoscedasticity and normality
+# under the raw outcome variable.
+
+#Calculate partial eta^2 effect sizes
+Anova(lm2, type = 3)
+(eta_sq_partial_Condition <- 2.04/(175.77 + 2.04)) #0.011
+(eta_sq_partial_College <- 0.15/(175.77 + 0.15)) # 0.001
+(eta_sq_partial_CxC <- 2.39/(175.77 + 2.39)) # 0.013
+
+# So what would have happened had we not transformed the outcome
+# variable (i.e., if we had used lm1 instead of lm2)?
+Anova(lm1, type = 3)
+
+#######
+# 3. Two-Way Analysis with work status
+#######
+lm3 <- lm(bdi_EOT ~ ConditionF * workingF, data = dat2)
+summary(lm3)
+qqPlot(lm3) # same problem
+
+lm4 <- lm(bdi_EOT_trans ~ ConditionF * workingF, data = dat2)
+summary(lm4)
+qqPlot(lm4) # looks good
+
+# Examine tenability of constant variance assumption
+# via boxplots
+boxplot(bdi_EOT_trans ~ ConditionF:workingF, data = dat2)
+# Looks good.
+
+# Create interaction plot
+emm2 <- emmeans(object = lm4,
+                specs = ~ ConditionF:workingF)
+emmip(object = emm2,
+      formula = workingF ~ ConditionF,
+      CIs = TRUE)
+# Possible interaction? Main effects? Analyze.
+Anova(lm4, type = 3)
+
+# We find that working status does not significantly interact with 
+# treatment condition to affect log(BDI) at end-of-trial (F = 1.77; p = .17). 
+# When averaging over working statuses, treatment condition has a non-significant 
+# effect on log(BDI) score (F = 3.01; p = .051). When averaging
+# over treatment conditions, working status has a significant impact on 
+# log(BDI) (F = 6.29; p = .013).
+
+# Package emmeans may be used to follow up on these findings to 
+# show main effects via plots.
