@@ -112,8 +112,3 @@ names(dat2)[7] <- "cig_EOT"
 names(dat2)
 head(dat2)
 
-
-
-
-
-
