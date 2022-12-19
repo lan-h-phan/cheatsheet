@@ -63,3 +63,23 @@ updateR(admin_password = 'Admin user password')
 #That’s it! 
 
 
+
+##############################################
+#Sync an existing project with a github repo
+###############################################
+
+#Open a terminal
+
+# move to the project directory
+#cd Projects/website
+
+# initiate the upstream tracking of the project on the GitHub repo
+#git remote add origin https://github.com/hansenjohnson/website.git
+
+# pull all files from the GitHub repo (typically just readme, license, gitignore)
+#git pull origin master
+
+# set up GitHub repo to track changes on local machine
+#git push -u origin master
+
+
